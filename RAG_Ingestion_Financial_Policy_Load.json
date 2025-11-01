@@ -9,7 +9,7 @@
         0,
         0
       ],
-      "id": "71c4bb28-864a-4705-88d4-4939adab091f",
+      "id": "7de657fd-cf9c-4e19-9614-002643fb2f8d",
       "name": "When clicking ‘Execute workflow’"
     },
     {
@@ -25,24 +25,8 @@
         208,
         0
       ],
-      "id": "c1124207-07aa-47a8-81dd-e9b085334b87",
-      "name": "Read/Write Files from Disk",
-      "alwaysOutputData": true
-    },
-    {
-      "parameters": {
-        "language": "python",
-        "pythonCode": "# Code Node (Python) - Custom Text Splitter (Final Version)\n\n# The list of input items from the previous node (Extract From File)\ninput_item = items[0] \n\n# The text is now available in the JSON field 'text_content_string'\n# This field name comes directly from the successful 'Extract From File' node output.\nif 'json' in input_item and 'text_content_string' in input_item['json']:\n    text_content = input_item['json']['text_content_string']\nelse:\n    # This should never happen if the previous node was successful\n    raise Exception(\"Input text field 'text_content_string' not found. Check previous node.\")\n\n# CRITICAL: Split by double newline to separate paragraphs/sections\n# This acts as our custom Recursive Character Splitter\nchunks = text_content.split('\\n\\n')\n\noutput_items = []\nsource_name = \"Financial Policy Document\"\n\nfor chunk in chunks:\n    clean_chunk = chunk.strip()\n    if clean_chunk:\n        output_items.append({\n            \"json\": {\n                # This is the field the Ollama node will read\n                \"text\": clean_chunk, \n                \"source\": source_name,\n            }\n        })\n\nreturn output_items"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        624,
-        0
-      ],
-      "id": "ca4907f4-0523-4b27-8e59-44b28d3ac50f",
-      "name": "Code in Python (Beta)",
-      "alwaysOutputData": true
+      "id": "fe2889fe-9df6-4c0c-80d0-4479acf62e8d",
+      "name": "Read/Write Files from Disk"
     },
     {
       "parameters": {
@@ -57,8 +41,101 @@
         416,
         0
       ],
-      "id": "ef1b398c-e653-4e09-a230-b8b9bad0b565",
+      "id": "ebad5ce9-ec26-4b01-8b3e-edcd744995b8",
       "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Code Node (Python) - Custom Text Splitter (Final Working Script)\n\n# The items variable holds the list of input items from the previous node\ninput_item = items[0] \noutput_items = []\nsource_name = \"Financial Policy Document\"\n\n# Check and retrieve the text string from the 'Extract from File' node output.\n# The text is now available in the JSON field 'text_content_string'.\nif 'json' in input_item and 'text_content_string' in input_item['json']:\n    text_content = input_item['json']['text_content_string']\nelse:\n    # This exception will only be raised if the previous node fails\n    raise Exception(\"Input text field 'text_content_string' not found. Check 'Extract from File' node settings.\")\n\n# CRITICAL: Split by double newline (\\n\\n) to preserve paragraphs/sections as chunks.\n# This acts as our custom Recursive Character Splitter.\nchunks = text_content.split('\\n\\n')\n\nfor chunk in chunks:\n    clean_chunk = chunk.strip()\n    if clean_chunk:\n        output_items.append({\n            \"json\": {\n                # This field 'text' will be used as the input for the Ollama Embedding node\n                \"text\": clean_chunk, \n                \"source\": source_name,\n            }\n        })\n\nreturn output_items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "ee77a090-3af4-46e3-8ee5-9f4978e09ce7",
+      "name": "Code in Python (Beta)"
+    },
+    {
+      "parameters": {
+        "modelName": "nomic-embed-text:latest",
+        "operation": "generateBatch",
+        "texts": "={{ $json.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-qwen-embedding.qwenEmbeddingTool",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "029495f1-ee4e-48fa-8694-a3a7156f08e1",
+      "name": "Ollama Embeddings Tool",
+      "credentials": {
+        "ollamaApi": {
+          "id": "vTwp1bRqFfuOF8aN",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": "financial_policy_rag",
+        "embeddingBatchSize": "={{ $json.embeddings }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePGVector",
+      "typeVersion": 1.3,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "fb5d920c-6bcf-4fbe-8f82-d74280e2f7d9",
+      "name": "Postgres PGVector Store",
+      "credentials": {
+        "postgres": {
+          "id": "9iEgf7GxsttjAcBU",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelName": "nomic-embed-text:latest",
+        "options": {
+          "prefix": "={{ $json.embeddings }}"
+        }
+      },
+      "type": "n8n-nodes-qwen-embedding.qwenEmbedding",
+      "typeVersion": 1,
+      "position": [
+        976,
+        192
+      ],
+      "id": "6639c07a-7b19-470b-9caf-129620428b83",
+      "name": "Ollama Embeddings",
+      "credentials": {
+        "ollamaApi": {
+          "id": "vTwp1bRqFfuOF8aN",
+          "name": "Ollama account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1168,
+        192
+      ],
+      "id": "728d161c-d00d-4899-986b-9050ae929913",
+      "name": "Default Data Loader"
     }
   ],
   "pinData": {},
@@ -95,14 +172,59 @@
           }
         ]
       ]
+    },
+    "Code in Python (Beta)": {
+      "main": [
+        [
+          {
+            "node": "Ollama Embeddings Tool",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Embeddings Tool": {
+      "main": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Embeddings": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Postgres PGVector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "b81a17e7-e0ff-4bc2-aab4-1e598c312544",
+  "versionId": "2422d224-7667-46f9-b844-3b8c8acfa624",
   "meta": {
+    "templateCredsSetupCompleted": true,
     "instanceId": "f5bcddac6d993c479117cf3a42e617c9d2fdf5ef5046e02b7c91a877061ea754"
   },
   "id": "dufacbHfKE9tIg92",
