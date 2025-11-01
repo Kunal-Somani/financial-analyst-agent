@@ -1,0 +1,20 @@
+# Dependency folders
+node_modules/
+.venv/
+__pycache__/
+
+# Credentials and secrets
+.env
+*.key
+*.pem
+credentials.json
+n8n/credentials.json
+
+# Database and docker files
+data/
+db_volume/
+docker-compose.override.yml
+docker-compose.local.yml
+
+# n8n workflow export (optional, but good practice)
+workflow.json
