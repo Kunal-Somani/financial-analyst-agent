@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL with pgvector (Our Financial Data & RAG Store)
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: always
+    environment:
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: my_strong_password
+      POSTGRES_DB: financial_db
+    volumes:
+      - db_volume:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U n8n_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # 2. n8n Self-Hosted Instance
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    environment:
+      # General Configuration
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      # Persistent Storage
+      N8N_USER: user
+      N8N_PASSWORD: password
+      # Database for n8n's own data (using the same PG instance)
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: postgres
+      DB_POSTGRESDB_DATABASE: financial_db
+      DB_POSTGRESDB_USER: n8n_user
+      DB_POSTGRESDB_PASSWORD: my_strong_password
+      # LLM API Key (Loaded from the .env file)
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    volumes:
+      - ./n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  db_volume:
