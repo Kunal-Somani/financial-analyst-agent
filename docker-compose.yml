@@ -43,9 +43,11 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY}
     volumes:
       - ./n8n_data:/home/node/.n8n
+      - ./rag_data:/rag_data
     depends_on:
       postgres:
         condition: service_healthy
 
 volumes:
   db_volume:
+  rag_data:
