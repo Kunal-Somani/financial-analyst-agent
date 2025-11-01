@@ -1,0 +1,110 @@
+{
+  "name": "RAG Ingestion: Financial Policy Load",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "71c4bb28-864a-4705-88d4-4939adab091f",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "/rag_data/compliance_policy.txt",
+        "options": {
+          "dataPropertyName": "text_content"
+        }
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "c1124207-07aa-47a8-81dd-e9b085334b87",
+      "name": "Read/Write Files from Disk",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "# Code Node (Python) - Custom Text Splitter (Final Version)\n\n# The list of input items from the previous node (Extract From File)\ninput_item = items[0] \n\n# The text is now available in the JSON field 'text_content_string'\n# This field name comes directly from the successful 'Extract From File' node output.\nif 'json' in input_item and 'text_content_string' in input_item['json']:\n    text_content = input_item['json']['text_content_string']\nelse:\n    # This should never happen if the previous node was successful\n    raise Exception(\"Input text field 'text_content_string' not found. Check previous node.\")\n\n# CRITICAL: Split by double newline to separate paragraphs/sections\n# This acts as our custom Recursive Character Splitter\nchunks = text_content.split('\\n\\n')\n\noutput_items = []\nsource_name = \"Financial Policy Document\"\n\nfor chunk in chunks:\n    clean_chunk = chunk.strip()\n    if clean_chunk:\n        output_items.append({\n            \"json\": {\n                # This is the field the Ollama node will read\n                \"text\": clean_chunk, \n                \"source\": source_name,\n            }\n        })\n\nreturn output_items"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "ca4907f4-0523-4b27-8e59-44b28d3ac50f",
+      "name": "Code in Python (Beta)",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "text_content",
+        "destinationKey": "text_content_string",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "ef1b398c-e653-4e09-a230-b8b9bad0b565",
+      "name": "Extract from File"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read/Write Files from Disk": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Beta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "b81a17e7-e0ff-4bc2-aab4-1e598c312544",
+  "meta": {
+    "instanceId": "f5bcddac6d993c479117cf3a42e617c9d2fdf5ef5046e02b7c91a877061ea754"
+  },
+  "id": "dufacbHfKE9tIg92",
+  "tags": []
+}
