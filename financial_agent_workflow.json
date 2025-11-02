@@ -1,0 +1,213 @@
+{
+  "name": "Financial Analyst Agent: Gemini Pro Agentic RAG/SQL",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -608,
+        -208
+      ],
+      "id": "7e232ec2-1f09-46c9-83e5-b35f7b91dbe4",
+      "name": "When chat message received",
+      "webhookId": "909875b9-0f4e-4108-8649-3c057aa24069",
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "You are a highly skilled Financial Trend Analyst powered by Gemini Pro. Your role is to analyze user queries and use the most appropriate tool to provide a complete answer.\n\n1. For questions requiring quantitative analysis, calculations, or reports on transaction, quantity, or price data, you MUST use the 'sql_query_executor' tool. When using this tool, your output MUST be only the raw SQL query.\n2. For questions about company policies, transaction rules, compliance, or reporting requirements, you MUST use the 'custom_rag_retriever' tool.\n3. Provide the final answer in a clear, professional summary.\n\nThe 'transactions' table schema is: [Schema details remain the same]"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        -336,
+        -208
+      ],
+      "id": "8ac0e0cb-bbdd-4dc7-933c-57a56c5cb972",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -384,
+        16
+      ],
+      "id": "bde99eb1-1e1f-4f9a-97ed-195c8823ec8e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "R8wdJSaTa1zUukaW",
+          "name": "Gemini Pro Agent"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -256,
+        16
+      ],
+      "id": "8b03dc8b-b6c6-4068-ad68-64c877095f33",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "chatId": "8139186451",
+        "text": "=Financial Report Generated:\\n\\n{{ $json.text }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        80,
+        -208
+      ],
+      "id": "cad3b9c8-5717-46c6-9c25-26e6ac00c8d3",
+      "name": "Send a text message",
+      "webhookId": "af1f3e15-e98f-40b2-89cf-e39e84a4603e",
+      "credentials": {
+        "telegramApi": {
+          "id": "9zI4MLGfWYL4GhPI",
+          "name": "Telegram"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "This tool is named 'sql_query_executor'. It runs raw SQL queries against the 'transactions' table to calculate metrics. To use it, you MUST output a ready-to-execute SQL query string starting with 'SELECT'. Do NOT generate any commentary or explanation.",
+        "operation": "executeQuery",
+        "query": "{{ $fromAI(\"query\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.6,
+      "position": [
+        -128,
+        16
+      ],
+      "id": "77d3c1b9-84a3-49af-85d1-7ef9740e0853",
+      "name": "sql_query_executor",
+      "credentials": {
+        "postgres": {
+          "id": "9iEgf7GxsttjAcBU",
+          "name": "Postgres RAG/SQL DB"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "description": "This tool is named 'custom_rag_retriever'. Use it to retrieve specific compliance policies and rules from the 'financial_policy_rag' vector store using the user's question as the query.",
+        "language": "python",
+        "pythonCode": "import json\nimport requests\nimport psycopg2 # Assumes this is installed in your n8n environment or accessible\n\n# 1. Get the user's query (the argument passed by the LLM)\n# The LLM passes the search query as the tool argument. We assume the LLM passes the argument in the first item.\n\n# We retrieve the argument the LLM passed to the tool\nuser_query = items[0]['json']['query']\n\n# --- RAG Step 1: Generate Embedding for the Query via Ollama API ---\nOLLAMA_URL = \"http://host.docker.internal:11434/api/embeddings\"\nOLLAMA_MODEL = \"nomic-embed-text:latest\"\n\nheaders = {\"Content-Type\": \"application/json\"}\npayload = {\"model\": OLLAMA_MODEL, \"prompt\": user_query}\n\ntry:\n    response = requests.post(OLLAMA_URL, headers=headers, json=payload)\n    response.raise_for_status()\n    query_embedding = response.json().get('embedding')\nexcept Exception as e:\n    # Return an error message to the LLM\n    return [{\"json\": {\"text\": f\"Error generating embedding: {e}\"}}]\n\n# --- RAG Step 2: Query PostgreSQL (pgvector) ---\n\n# Format the embedding for SQL query\nembedding_str = \"[\" + \",\".join(map(str, query_embedding)) + \"]\"\n\n# CRITICAL: Vector Similarity Search (using L2 distance <-> operator)\nSQL_QUERY = f\"\"\"\nSELECT text, \n       source \nFROM financial_policy_rag \nORDER BY embedding <-> '{embedding_str}' \nLIMIT 3;\n\"\"\"\n\nPG_CONNECT_STRING = \"host=postgres dbname=financial_db user=n8n_user password=my_strong_password\"\n\ntry:\n    conn = psycopg2.connect(PG_CONNECT_STRING)\n    cursor = conn.cursor()\n    cursor.execute(SQL_QUERY)\n    results = cursor.fetchall()\n    cursor.close()\n    conn.close()\nexcept Exception as e:\n    return [{\"json\": {\"text\": f\"Error querying database: {e}\"}}]\n\n# --- RAG Step 3: Format Output for AI Agent ---\n\nrag_context = \"\"\nif results:\n    for text, source in results:\n        rag_context += f\"--- Source: {source} ---\\n{text}\\n\\n\"\n\n    # Return the retrieved context back to the AI Agent\n    return [{\"json\": {\"text\": rag_context}}]\nelse:\n    return [{\"json\": {\"text\": \"No relevant policy documents found in the vector store.\"}}]"
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        0
+      ],
+      "id": "4ee885bc-c1b2-4fef-90c0-14757eb7831a",
+      "name": "custom_rag_retriever"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "sql_query_executor": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "custom_rag_retriever": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1fe46b23-3541-4cf2-aa53-ef7be079b702",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f5bcddac6d993c479117cf3a42e617c9d2fdf5ef5046e02b7c91a877061ea754"
+  },
+  "id": "Le8es9w5sq9RsesM",
+  "tags": []
+}
