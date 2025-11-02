@@ -1,4 +1,4 @@
-# 💰 Project 1: Advanced Financial Trend Analyst Agent
+# 💰 Advanced Financial Trend Analyst Agent
 ### Dual-Tool Agentic Reasoning & Custom API Integration
 
 This project demonstrates proficiency in building complex, self-hosted AI Agents capable of dynamic tool selection between quantitative database analysis (SQL) and qualitative compliance retrieval (RAG). This fully satisfies all application requirements regarding **n8n (self-hosted)**, **LLM-RAG**, and **custom API integration**.
