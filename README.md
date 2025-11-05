@@ -1,9 +1,9 @@
-# 💰 Advanced Financial Trend Analyst Agent
+#  Advanced Financial Trend Analyst Agent
 ### Dual-Tool Agentic Reasoning & Custom API Integration
 
 This project demonstrates proficiency in building complex, self-hosted AI Agents capable of dynamic tool selection between quantitative database analysis (SQL) and qualitative compliance retrieval (RAG). This fully satisfies all application requirements regarding **n8n (self-hosted)**, **LLM-RAG**, and **custom API integration**.
 
-## 🌟 Project Summary (For Resume / Portfolio)
+##  Project Summary (For Resume / Portfolio)
 
 | Feature | Technical Implementation |
 | :--- | :--- |
@@ -13,7 +13,7 @@ This project demonstrates proficiency in building complex, self-hosted AI Agents
 
 ---
 
-## 🛠️ Technical Stack & Architecture
+##  Technical Stack & Architecture
 
 | Component | Tool / Technology | Purpose |
 | :--- | :--- | :--- |
@@ -24,7 +24,7 @@ This project demonstrates proficiency in building complex, self-hosted AI Agents
 
 ---
 
-## 📝 RAG Ingestion Pipeline (Step 1: Data Preparation)
+##  RAG Ingestion Pipeline (Step 1: Data Preparation)
 
 This workflow runs first to prepare the knowledge base, ensuring the Agent has data to retrieve:
 
@@ -34,7 +34,7 @@ This workflow runs first to prepare the knowledge base, ensuring the Agent has d
 
 ---
 
-## 🧠 Agentic Reasoning Workflow (Step 2: The Service)
+##  Agentic Reasoning Workflow (Step 2: The Service)
 
 This workflow operates continuously, using the data prepared above to service user requests.
 
@@ -51,7 +51,7 @@ The Agent uses a structured **System Prompt** to analyze the user's query and tr
 
 ---
 
-## 🚀 Setup & Local Deployment
+##  Setup & Local Deployment
 
 To run this project, follow these steps:
 
@@ -64,7 +64,7 @@ To run this project, follow these steps:
 
 ---
 
-## ⚖️ License
+##  License
 
 This project is protected under the **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International Public License (CC BY-NC-SA 4.0)**.
 
